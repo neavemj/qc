@@ -1,0 +1,213 @@
+---
+title: "AIV pipeline QC report"
+author: "Matthew J. Neave"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    theme: flatly
+    toc: false
+    toc_float: false
+    smooth_scroll: false
+params:
+  config_file: "NA"
+  IRMA_table: "NA"
+  IRMA_dir: "NA"
+  output: "NA"
+  output_dir: "NA"
+---
+
+<!-- set-up code including library loading here -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+knitr::opts_knit$set(root.dir = working_dir)
+
+library(ggplot2)
+library(tidyr)
+require(scales)
+library(knitr)
+library(kableExtra)
+library(yaml)
+library(RColorBrewer)
+library(tidyverse)
+
+```
+
+
+<!-- functions for plotting, tables, etc. should go here -->
+
+```{r plot_overall_classifications, warning=FALSE}
+
+
+```
+
+```{r taxa_table_function, warning=FALSE}
+
+
+```
+
+
+<!-- report layout goes here -->
+
+# {.tabset .tabset-fade}
+
+## Technical Summary
+
+The AIV assembly pipeline takes raw NGS reads and attempts to assemble a flu genome and produce an appropriate tree and report. The pipeline uses a strategy of read quality trimming, genome assembly using IRMA, cleavage site identification, and annotation using various blast searches. An automatically generated word report is then produced that should be edited by laboratory staff before being sent to clients.
+
+
+### Important 
+
+This is an automated pipeline and it will likely get things wrong from time to time. Manual examination of the report and this QC document is essential.
+
+
+### Run metrics and software versions
+
+```{r}
+
+
+```
+
+## Overall Classifications
+
+### Data Quality and Overall Classifications
+
+The raw data were trimmed for quality and adapters using Trimmomatic. The cleaned reads were then assembled using the IRMA pipeline.
+
+
+```{r overall_plots, fig.width=8, fig.height=8, warning=FALSE}
+
+# The IRMA table contains several metrics that are prefixed by a number
+# will separate the number into different columns to use for color / facets
+# also rename the metric number to provide a bit more information
+
+# IRMA_reads <- read.table("../../test2_H5_singleSample/02_irma_assembly/s21-02023-01/irma_output/tables/READ_COUNTS.txt", header=T)
+
+IRMA_reads <- read.table(params$IRMA_table, header=T)
+
+IRMA_reads <- IRMA_reads %>%
+  separate(Record, c("check_number", "metric"), "-") %>%
+  mutate(check_number = recode(check_number, "0" = "0-read pairs", 
+                               "1" = "1-total reads", "2" = "2-initial QC",
+                               "3" = "3-match to flu", "4" = "4-primary assembly",
+                               "5" = "5-alternate matches"))
+
+
+ggplot(IRMA_reads, aes(x=metric, y=Reads, fill=check_number)) +
+  geom_col() +
+  scale_fill_brewer(palette = "Dark2") +
+  #scale_fill_manual(values=cols) +
+  #theme(axis.title.y = element_blank(), legend.title = element_blank()) +
+  scale_y_continuous(labels = comma) +
+  coord_flip() +
+  facet_grid(rows=vars(check_number), scales="free_y", space="free_y") +
+  labs(
+    #title = "IRMA Quality Checks",
+    #subtitle = "Number of reads binned to each IRMA category"
+  ) +
+  theme_minimal(base_family = "Roboto Condensed") +
+  theme(
+    plot.margin = margin(0.5, 0.5, 0.5, 0.5, unit = "cm"),
+    plot.title = element_text(size = 15, face = "bold"),
+    strip.text.y.right = element_text(angle = 0, face = "bold"),
+    strip.placement = "outside",
+    axis.title.x = element_text(margin = margin(t = 0.5, b = 0.5, unit = "cm")),
+    axis.title.y = element_blank(),
+    axis.text = element_text(size = 10),
+    legend.position = "none",
+    panel.grid.major.y = element_blank(),
+    )
+
+
+```
+
+
+## Per Segment Metrics
+
+This section contains coverage plots of each segment 
+
+```{r segment_plots, fig.width=8, fig.height=8, warning=FALSE}
+# IRMA creates a separate coverage file for each segment
+# need to get these into a single file for faceting in ggplot
+
+#cov <- list.files(path="../../test2_H5_singleSample/02_irma_assembly/s21-02023-01/irma_output/tables/", pattern="*coverage*", full.names=T) %>%
+#  lapply(read.table, sep="\t", header=T) %>%
+#  bind_rows()
+
+cov <- list.files(path=params$IRMA_dir, pattern="*coverage*", full.names=T) %>%
+  lapply(read.table, sep="\t", header=T) %>%
+  bind_rows()
+
+# would also be nice to have an indication of the expected fragment length
+# just in case the full segment was not assembled
+# the problem is that IRMA names the HA and NA segments according to subtype
+# so can't simply add a length for "HA"; will have to first figure out
+# which subtypes are in the IRMA table
+
+subtypes <- data.frame("Reference_Name" = unique(cov$Reference_Name))
+
+subtypes <- subtypes %>%
+  mutate("expected_length" = case_when(
+    startsWith(Reference_Name, "A_HA") ~ 1800,
+    startsWith(Reference_Name, "A_MP") ~ 1000,
+    startsWith(Reference_Name, "A_NA") ~ 1500,
+    startsWith(Reference_Name, "A_NP") ~ 1600,
+    startsWith(Reference_Name, "A_NS") ~ 900,
+    startsWith(Reference_Name, "A_PA") ~ 2200,
+    startsWith(Reference_Name, "A_PB1") ~ 2400,
+    startsWith(Reference_Name, "A_PB2") ~ 2400
+  ))
+
+
+ggplot(cov, aes(x=Position, y=Coverage.Depth, fill=Reference_Name)) +
+  geom_area(aes(alpha=0.5)) +
+  geom_point(data=subtypes, aes(x=expected_length, y=1)) +
+  geom_vline(data=subtypes, aes(xintercept=expected_length), linetype="dotted") +
+  geom_vline(aes(xintercept=0), linetype="dotted") +
+  scale_fill_brewer(palette = "Dark2") +
+  #scale_fill_manual(values=cols) +
+  #theme(axis.title.y = element_blank(), legend.title = element_blank()) +
+  scale_y_continuous(labels = comma) +
+  #coord_flip() +
+  facet_grid(rows=vars(Reference_Name), scales="free") +
+  labs(
+    #title = "IRMA Quality Checks",
+    #subtitle = "Number of reads binned to each IRMA category"
+  ) +
+  theme_minimal(base_family = "Roboto Condensed") +
+  theme(
+    plot.margin = margin(0.5, 0.5, 0.5, 0.5, unit = "cm"),
+    plot.title = element_text(size = 15, face = "bold"),
+    strip.text.y.right = element_text(angle = 0, face = "bold"),
+    #strip.placement = "outside",
+    axis.title.x = element_text(margin = margin(t = 0.5, b = 0.5, unit = "cm")),
+    axis.title.y = element_blank(),
+    axis.text = element_text(size = 10),
+    legend.position = "none",
+    panel.grid.major.y = element_blank(),
+    )
+
+
+```
+
+
+
+
+## Configuration file
+
+```{r config_tab, warning=FALSE}
+
+# config_lines <- readLines("../../test2_H5_singleSample/config.yaml")
+
+config_lines <- readLines(params$config_file)
+
+for(line in config_lines){
+    print(line, quote=FALSE)
+}
+
+```
+
+## DAG
+
+
