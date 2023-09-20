@@ -1,6 +1,6 @@
 ---
 title: "AIV pipeline QC report"
-author: "Matthew J. Neave"
+author: "DSR Sequencing Laboratory"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
@@ -10,6 +10,8 @@ output:
     smooth_scroll: false
 params:
   config_file: "NA"
+  dag: "NA"
+  software_list: "NA"
   IRMA_table: "NA"
   IRMA_dir: "NA"
   output: "NA"
@@ -65,9 +67,18 @@ This is an automated pipeline and it will likely get things wrong from time to t
 ### Run metrics and software versions
 
 ```{r}
+# note the rule get_package_versions in benchmark.smk grep specifically for the main versions
+# would be possible to list more software versions by changing the file config/software_list.txt
+# could also exhaustively list software versions if that's better for QA
 
+software_df <- read.csv(params$software_list, sep="\t", header = F)
+colnames(software_df) <- c("Software", "Version")
+
+kbl(software_df) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 ```
+
 
 ## Overall Classifications
 
@@ -149,14 +160,14 @@ subtypes <- data.frame("Reference_Name" = unique(cov$Reference_Name))
 
 subtypes <- subtypes %>%
   mutate("expected_length" = case_when(
-    startsWith(Reference_Name, "A_HA") ~ 1800,
-    startsWith(Reference_Name, "A_MP") ~ 1000,
-    startsWith(Reference_Name, "A_NA") ~ 1500,
-    startsWith(Reference_Name, "A_NP") ~ 1600,
-    startsWith(Reference_Name, "A_NS") ~ 900,
-    startsWith(Reference_Name, "A_PA") ~ 2200,
-    startsWith(Reference_Name, "A_PB1") ~ 2400,
-    startsWith(Reference_Name, "A_PB2") ~ 2400
+    startsWith(Reference_Name, "A_HA") ~ 1686,
+    startsWith(Reference_Name, "A_MP") ~ 982,
+    startsWith(Reference_Name, "A_NA") ~ 1416,
+    startsWith(Reference_Name, "A_NP") ~ 1497,
+    startsWith(Reference_Name, "A_NS") ~ 838,
+    startsWith(Reference_Name, "A_PA") ~ 2151,
+    startsWith(Reference_Name, "A_PB1") ~ 2274,
+    startsWith(Reference_Name, "A_PB2") ~ 2280
   ))
 
 
@@ -196,18 +207,19 @@ ggplot(cov, aes(x=Position, y=Coverage.Depth, fill=Reference_Name)) +
 
 ## Configuration file
 
-```{r config_tab, warning=FALSE}
+```{r config_tab, warning=FALSE, comment=""}
 
-# config_lines <- readLines("../../test2_H5_singleSample/config.yaml")
-
-config_lines <- readLines(params$config_file)
-
-for(line in config_lines){
-    print(line, quote=FALSE)
-}
+cat(readLines(params$config_file), sep = "\n")
 
 ```
 
+
 ## DAG
+
+```{r dag_graph}
+
+knitr::include_graphics(params$dag)
+
+```
 
 

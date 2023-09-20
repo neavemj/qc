@@ -8,7 +8,13 @@ option_list <- list(
   # required args
   make_option(c("--config_file"), type="character", default=NULL,
               help="Config file used to run the pipeline", metavar="character"),
-              
+
+  make_option(c("--dag"), type="character", default=NULL,
+              help="PNG DAG graph of the ran pipeline", metavar="character"),
+  
+  make_option(c("--software_list"), type="character", default=NULL,
+              help="all software and versions from conda list", metavar="character"),
+
   make_option(c("--IRMA_table"), type="character", default=NULL,
               help="Counts table produced by IRMA READ_COUNTS.txt", metavar="character"),
 
@@ -41,6 +47,8 @@ working_dir <- getwd()
 render(opt$rmarkdown,
     params = list(
     config_file = opt$config_file,
+    dag = opt$dag,
+    software_list = opt$software_list,
     IRMA_table = opt$IRMA_table,
     IRMA_dir = opt$IRMA_dir
     ),

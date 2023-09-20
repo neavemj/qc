@@ -1,0 +1,13 @@
+Name
+python
+snakemake
+trimmomatic
+porechop
+nanofilt
+irma
+bowtie
+spades
+samtools
+diamond
+blast
+ggplot

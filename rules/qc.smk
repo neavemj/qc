@@ -24,6 +24,8 @@ rule make_QC_report:
         """
     input:
        config_file = "config.yaml",
+       dag_graph = "benchmarks/dag.png",
+       software_list = "logs/software_versions.txt",
        run_IRMA = "02_irma_assembly/{sample}/IRMA_COMPLETE",
        rmarkdown = config["program_dir"] + "qc/scripts/markdown_qc.Rmd",
     params:
@@ -35,6 +37,8 @@ rule make_QC_report:
         """
         Rscript {config[program_dir]}qc/scripts/run_QC_markdown.R \
             --config_file {input.config_file} \
+            --dag {input.dag_graph} \
+            --software_list {input.software_list} \
             --IRMA_table {params.IRMA_table} \
             --IRMA_dir {params.IRMA_dir} \
             --output_dir . \
