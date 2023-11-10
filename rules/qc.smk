@@ -14,7 +14,8 @@ configfile: "config.yaml"
 
 rule QC_all:
     input:
-        expand("{sample}_QC_report.html", sample=config["samples"])
+        expand("{sample}_QC_report.html", sample=SAMPLES)
+        
 
 rule make_QC_report:
     message:
@@ -45,3 +46,4 @@ rule make_QC_report:
             --rmarkdown {input.rmarkdown} \
             --output {output.report}
         """
+
